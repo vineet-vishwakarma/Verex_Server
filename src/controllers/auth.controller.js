@@ -1,6 +1,5 @@
 import { oauth2Client } from "../index.js";
 
-
 const authLogout = (req, res) => {
     req.session.destroy();
     res.json({ message: "Logged out successfully" });

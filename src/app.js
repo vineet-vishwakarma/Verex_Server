@@ -34,8 +34,10 @@ app.use(
 
 import emailRouter from "../src/routes/email.route.js";
 import authRouter from "../src/routes/auth.route.js";
+import aiAgentRouter from "../src/routes/aiAgent.route.js";
 
 app.use("/email", emailRouter);
 app.use("/auth", authRouter);
+app.use("/ai", aiAgentRouter);
 
 export { app };
