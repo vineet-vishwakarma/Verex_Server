@@ -60,4 +60,39 @@ const sendEmail = async (req, res) => {
     }
 };
 
-export { getEmails, sendEmail };
+const searchEmails = async (req, res) => {
+    try {
+        const { q = '', maxResults = 10 } = req.query;
+        
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+        
+        const response = await gmail.users.messages.list({
+            userId: "me",
+            maxResults: parseInt(maxResults),
+            q: q
+        });
+
+        if (!response.data.messages) {
+            return res.json({ messages: [] });
+        }
+
+        const emails = await Promise.all(
+            response.data.messages.map(async (message) => {
+                const email = await gmail.users.messages.get({
+                    userId: "me",
+                    id: message.id,
+                });
+                return email.data;
+            })
+        );
+
+        res.json(emails);
+    } catch (error) {
+        console.error("Error searching emails:", error);
+        res.status(500).json({ 
+            error: "Failed to search emails",
+            message: error.message 
+        });
+    }
+};
+export { getEmails, sendEmail, searchEmails };
