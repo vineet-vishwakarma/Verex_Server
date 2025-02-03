@@ -161,4 +161,42 @@ const getEmailById = async (req, res) => {
     }
 };
 
-export { getEmails, sendEmail, searchEmails, getEmailById };
+const deleteEmail = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+
+        if (!messageId) {
+            return res.status(400).json({ error: "Message ID is required" });
+        }
+
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+        
+        await gmail.users.messages.trash({
+            userId: "me",
+            id: messageId
+        });
+
+        res.json({ 
+            success: true, 
+            message: "Email moved to trash successfully",
+            messageId 
+        });
+
+    } catch (error) {
+        console.error("Error deleting email:", error);
+        
+        if (error.code === 404) {
+            return res.status(404).json({ 
+                error: "Email not found",
+                details: "The specified message ID does not exist"
+            });
+        }
+
+        res.status(500).json({ 
+            error: "Failed to delete email",
+            details: error.message 
+        });
+    }
+};
+
+export { getEmails, sendEmail, searchEmails, getEmailById, deleteEmail };
