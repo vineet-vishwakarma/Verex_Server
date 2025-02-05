@@ -26,6 +26,65 @@ const getEmails = async (req, res) => {
     }
 };
 
+const getEmailsByLabel = async (req, res, labelName) => {
+    try {
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+        // First, get the label ID for the specified label
+        const labelsResponse = await gmail.users.labels.list({
+            userId: "me",
+        });
+
+        const label = labelsResponse.data.labels.find(
+            (l) => l.name.toLowerCase() === labelName.toLowerCase()
+        );
+
+        if (!label) {
+            return res
+                .status(404)
+                .json({ error: `Label '${labelName}' not found` });
+        }
+
+        // Fetch messages with the specific label
+        const response = await gmail.users.messages.list({
+            userId: "me",
+            labelIds: [label.id],
+            maxResults: 10,
+        });
+
+        const emails = await Promise.all(
+            response.data.messages.map(async (message) => {
+                const email = await gmail.users.messages.get({
+                    userId: "me",
+                    id: message.id,
+                });
+                return email.data;
+            })
+        );
+
+        res.json(emails);
+    } catch (error) {
+        console.error(`Error fetching ${labelName} emails:`, error);
+        res.status(500).json({ error: `Failed to fetch ${labelName} emails` });
+    }
+};
+
+const getSentEmails = async (req, res) => {
+    await getEmailsByLabel(req, res, "SENT");
+};
+
+const getSpamEmails = async (req, res) => {
+    await getEmailsByLabel(req, res, "SPAM");
+};
+
+const getUnreadEmails = async (req, res) => {
+    await getEmailsByLabel(req, res, "UNREAD");
+};
+
+const getImportantEmails = async (req, res) => {
+    await getEmailsByLabel(req, res, "IMPORTANT");
+};
+
 const sendEmail = async (req, res) => {
     try {
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
@@ -62,14 +121,14 @@ const sendEmail = async (req, res) => {
 
 const searchEmails = async (req, res) => {
     try {
-        const { q = '', maxResults = 10 } = req.query;
-        
+        const { q = "", maxResults = 10 } = req.query;
+
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-        
+
         const response = await gmail.users.messages.list({
             userId: "me",
             maxResults: parseInt(maxResults),
-            q: q
+            q: q,
         });
 
         if (!response.data.messages) {
@@ -89,9 +148,9 @@ const searchEmails = async (req, res) => {
         res.json(emails);
     } catch (error) {
         console.error("Error searching emails:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: "Failed to search emails",
-            message: error.message 
+            message: error.message,
         });
     }
 };
@@ -170,33 +229,42 @@ const deleteEmail = async (req, res) => {
         }
 
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-        
+
         await gmail.users.messages.trash({
             userId: "me",
-            id: messageId
+            id: messageId,
         });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: "Email moved to trash successfully",
-            messageId 
+            messageId,
         });
-
     } catch (error) {
         console.error("Error deleting email:", error);
-        
+
         if (error.code === 404) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 error: "Email not found",
-                details: "The specified message ID does not exist"
+                details: "The specified message ID does not exist",
             });
         }
 
-        res.status(500).json({ 
+        res.status(500).json({
             error: "Failed to delete email",
-            details: error.message 
+            details: error.message,
         });
     }
 };
 
-export { getEmails, sendEmail, searchEmails, getEmailById, deleteEmail };
+export {
+    getEmails,
+    sendEmail,
+    searchEmails,
+    getEmailById,
+    deleteEmail,
+    getSentEmails,
+    getUnreadEmails,
+    getImportantEmails,
+    getSpamEmails,
+};
